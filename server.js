@@ -262,6 +262,12 @@ const transactionSuccessSchema = new mongoose.Schema({
   hoa: { type: String, required: true },
   bankRef: { type: String, required: true },
   crn: { type: String, required: true },
+  etaxPaymentReference: { type: String }, // E-Tax Payment Reference
+  paymentId: { type: String }, // Payment ID for tracking
+  
+  // Document display values
+  merchantName: { type: String, default: "Telangana" },
+  typeOfTax: { type: String, default: "Telangana Commercial Tax" },
   
   // Status and timestamps
   transactionStatus: { type: String, default: "Completed" },
@@ -375,41 +381,68 @@ app.post("/api/store-transaction-success", verifyToken, async (req, res) => {
       return res.status(400).json({ message: "Missing required transaction fields" });
     }
     
-    // Generate CRN
-    const crn = Math.floor(100000000000 + Math.random() * 900000000000).toString();
-    
-    // Create new transaction success document
-    const newTransaction = new TransactionSuccess({
+    // Check if transaction already exists to reuse CRN
+    const existingTransaction = await TransactionSuccess.findOne({
       ptin: transactionData.ptin,
-      name: transactionData.name,
-      taxType: transactionData.taxType,
-      purpose: transactionData.purpose,
-      taxPeriodFrom: transactionData.taxPeriodFrom,
-      taxPeriodTo: transactionData.taxPeriodTo,
-      amount: transactionData.amount,
-      remarks: transactionData.remarks,
-      date: transactionData.date,
-      
-      // Bank transaction details
-      bankName: transactionData.bankName,
-      accountNumber: transactionData.accountNumber,
-      accountHolder: transactionData.accountHolder,
-      
-      // Transaction references
       challanNo: transactionData.challanNo,
-      ddocode: transactionData.ddocode,
-      hoa: transactionData.hoa,
-      bankRef: transactionData.bankRef,
-      crn: crn,
-      
-      // Status and timestamps
-      transactionStatus: "Completed",
-      bankTimestamp: new Date(transactionData.bankTimestamp),
-      completedAt: new Date()
+      bankRef: transactionData.bankRef
     });
     
-    // Save to MongoDB
-    const savedTransaction = await newTransaction.save();
+    let crn;
+    if (existingTransaction) {
+      // Reuse existing CRN if transaction already exists
+      crn = existingTransaction.crn;
+    } else {
+      // Generate new CRN only for new transactions
+      crn = Math.floor(100000000000 + Math.random() * 900000000000).toString();
+    }
+    
+    let savedTransaction;
+    
+    if (existingTransaction) {
+      // Update existing transaction
+      existingTransaction.completedAt = new Date();
+      savedTransaction = await existingTransaction.save();
+    } else {
+      // Create new transaction success document
+      const newTransaction = new TransactionSuccess({
+        ptin: transactionData.ptin,
+        name: transactionData.name,
+        taxType: transactionData.taxType,
+        purpose: transactionData.purpose,
+        taxPeriodFrom: transactionData.taxPeriodFrom,
+        taxPeriodTo: transactionData.taxPeriodTo,
+        amount: transactionData.amount,
+        remarks: transactionData.remarks,
+        date: transactionData.date,
+        
+        // Bank transaction details
+        bankName: transactionData.bankName,
+        accountNumber: transactionData.accountNumber,
+        accountHolder: transactionData.accountHolder,
+        
+        // Transaction references
+        challanNo: transactionData.challanNo,
+        ddocode: transactionData.ddocode,
+        hoa: transactionData.hoa,
+        bankRef: transactionData.bankRef,
+        crn: crn,
+        etaxPaymentReference: transactionData.etaxPaymentReference,
+        paymentId: transactionData.paymentId,
+        
+        // Document display values
+        merchantName: "Telangana",
+        typeOfTax: "Telangana Commercial Tax",
+        
+        // Status and timestamps
+        transactionStatus: "Completed",
+        bankTimestamp: new Date(transactionData.bankTimestamp),
+        completedAt: new Date()
+      });
+      
+      // Save to MongoDB
+      savedTransaction = await newTransaction.save();
+    }
     
     // Transaction success saved
     
@@ -444,6 +477,28 @@ app.get("/api/transaction-history", verifyToken, async (req, res) => {
   } catch (error) {
     res.status(500).json({ 
       message: "Failed to fetch transaction history",
+      error: error.message 
+    });
+  }
+});
+
+// Get specific transaction by ID
+app.get("/api/transaction/:transactionId", verifyToken, async (req, res) => {
+  try {
+    const transaction = await TransactionSuccess.findById(req.params.transactionId);
+    
+    if (!transaction) {
+      return res.status(404).json({ message: "Transaction not found" });
+    }
+    
+    res.json({
+      message: "Transaction retrieved successfully",
+      transaction: transaction
+    });
+    
+  } catch (error) {
+    res.status(500).json({ 
+      message: "Failed to fetch transaction",
       error: error.message 
     });
   }
