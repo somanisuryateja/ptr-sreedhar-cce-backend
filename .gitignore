@@ -1,0 +1,30 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp/
+.pnp.js
+
+# Build artifacts
+dist/
+build/
+coverage/
+
+# Environment variables
+.env
+.env.*.local
+
+# IDE and OS files
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Other temporary files
+tmp/
+temp/
+log/
+logs/
+*.log
