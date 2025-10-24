@@ -77,10 +77,10 @@ const dealers = [
 
 /* ---------------------- Annexure 2 - Banks ---------------------- */
 const bankAccounts = [
-  { bank: "State Bank of India", accountNo: "6785436735935479", userId: "Raman Kumar", password: "Sinha@897" },
-  { bank: "Bank of Baroda", accountNo: "6433348927956839", userId: "Prasad Shetty", password: "Shetty_585" },
-  { bank: "Punjab National Bank", accountNo: "4638546753895346", userId: "Vinod Kumar", password: "Kumar$999" },
-  { bank: "Axis Bank", accountNo: "5643753275674568", userId: "Shrishti", password: "Shrishti*765" },
+  { bank: "State Bank of India", accountNo: "6785 4367 3593 5479", userId: "Raman Kumar", password: "Sinha@897" },
+  { bank: "Bank of Baroda", accountNo: "6433 3489 2795 6839", userId: "Prasad Shetty", password: "Shetty_585" },
+  { bank: "Punjab National Bank", accountNo: "4638 5467 5389 5346", userId: "Vinod Kumar", password: "Kumar$999" },
+  { bank: "Axis Bank", accountNo: "5643 7532 7567 4568", userId: "Shrishti", password: "Shrishti*765" },
 ];
 
 /* ---------------------- JWT helper ---------------------- */
@@ -236,6 +236,7 @@ const paymentSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   remarks: { type: String },
   date: { type: String, required: true },
+  ctdTransactionId: { type: String, required: true }, // CTD Transaction ID (14-digit starting with 36)
   submittedAt: { type: Date, default: Date.now }
 });
 
@@ -288,6 +289,9 @@ app.post("/api/submit-payment", verifyToken, async (req, res) => {
       return res.status(400).json({ message: "Missing required fields" });
     }
     
+    // Generate CTD Transaction ID (14-digit starting with 36 as per Table 3)
+    const ctdTransactionId = "36" + Math.floor(100000000000 + Math.random() * 900000000000).toString();
+    
     // Create new payment document
     const newPayment = new Payment({
       ptin: paymentData.ptin,
@@ -299,6 +303,7 @@ app.post("/api/submit-payment", verifyToken, async (req, res) => {
       amount: paymentData.amount,
       remarks: paymentData.remarks,
       date: paymentData.date,
+      ctdTransactionId: ctdTransactionId, // Store CTD Transaction ID
       submittedAt: new Date()
     });
     
@@ -310,6 +315,7 @@ app.post("/api/submit-payment", verifyToken, async (req, res) => {
     res.json({
       message: "Payment submitted successfully",
       paymentId: savedPayment._id,
+      ctdTransactionId: ctdTransactionId, // Return CTD Transaction ID
       submittedAt: savedPayment.submittedAt
     });
     
@@ -336,12 +342,12 @@ app.post("/api/validate-bank-account", verifyToken, async (req, res) => {
     if (!bankAccount) {
       return res.status(401).json({ 
         valid: false,
-        message: "Invalid banking credentials. Please check your username and password." 
+        message: "Invalid banking credentials. Please check your account holder name and password." 
       });
     }
     
-    // Generate bank reference number
-    const bankRef = Math.floor(100000000000 + Math.random() * 900000000000).toString();
+    // Generate bank reference number (10-digit as per Table 5)
+    const bankRef = Math.floor(1000000000 + Math.random() * 9000000000).toString();
     
     // Bank authentication successful
     
@@ -393,7 +399,7 @@ app.post("/api/store-transaction-success", verifyToken, async (req, res) => {
       // Reuse existing CRN if transaction already exists
       crn = existingTransaction.crn;
     } else {
-      // Generate new CRN only for new transactions
+      // Generate new CRN only for new transactions (12-digit)
       crn = Math.floor(100000000000 + Math.random() * 900000000000).toString();
     }
     
