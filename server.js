@@ -131,6 +131,16 @@ const verifyToken = (req, res, next) => {
   });
 };
 
+// Token validation endpoint
+app.get("/api/validate-token", verifyToken, (req, res) => {
+  // If we reach here, token is valid
+  res.json({ 
+    valid: true, 
+    user: req.user,
+    message: "Token is valid" 
+  });
+});
+
 // Fetch dealer info (protected)
 app.get("/api/dealer-info", verifyToken, (req, res) => {
   const dealer = dealers.find((d) => d.ptin === req.user.ptin);
