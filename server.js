@@ -292,6 +292,9 @@ app.post("/api/submit-payment", verifyToken, async (req, res) => {
     // Generate CTD Transaction ID (14-digit starting with 36 as per Table 3)
     const ctdTransactionId = "36" + Math.floor(100000000000 + Math.random() * 900000000000).toString();
     
+    console.log("Generated CTD Transaction ID:", ctdTransactionId);
+    console.log("Payment data received:", JSON.stringify(paymentData, null, 2));
+    
     // Create new payment document
     const newPayment = new Payment({
       ptin: paymentData.ptin,
@@ -310,6 +313,9 @@ app.post("/api/submit-payment", verifyToken, async (req, res) => {
     // Save to MongoDB
     const savedPayment = await newPayment.save();
     
+    console.log("Payment saved successfully with ID:", savedPayment._id);
+    console.log("CTD Transaction ID being returned:", ctdTransactionId);
+    
     // Payment saved successfully
     
     res.json({
@@ -320,6 +326,12 @@ app.post("/api/submit-payment", verifyToken, async (req, res) => {
     });
     
   } catch (error) {
+    console.error("Error in submit-payment:", error);
+    console.error("Error details:", {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     res.status(500).json({ 
       message: "Failed to save payment to database",
       error: error.message 
